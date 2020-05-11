@@ -24,5 +24,13 @@ gem "pdf-reader", "~> 2.4"
 
 gem 'humanize'
 
+# validate_data
+gem 'ethereum.rb'
+
+# debugging
+gem 'ruby-debug-ide'
+
+gem 'debase'
+
 # testing
 gem 'rspec'

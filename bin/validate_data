@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+
+require 'net/http'
+require 'ethereum'
+require 'json'
+require 'digest'
+
+# import constants
+API_BASE_URL = '3.12.56.49'
+API_PATH = '/hashes/all_since_id/'
+
+RPC_CLIENT = 'http://localhost:7545'
+PATH_TO_ABI = ''
+CONTRACT_ADDRESS = "0xb61e93f538601E5111a43464c7233F9F35C02d5f"
+PATH_TO_TRUFFLE_REPO = "/Users/dangerousfood/Dev/checkpoint"
+
+# init RPC client and contracts
+client = Ethereum::HttpClient.new(RPC_CLIENT)
+contract = Ethereum::Contract.create(name: "Checkpoint", truffle: { paths: [ PATH_TO_TRUFFLE_REPO ] }, client: client, address: CONTRACT_ADDRESS)
+
+# get from contracts currentMerkleRoot and lastIndex
+current_merkle_root = contract.call.get_current_merkle_root(client.default_account)
+# last_index = contract.call.get_last_index(client.default_account)
+
+# get latest API values
+response = Net::HTTP.get(API_BASE_URL, API_PATH + current_merkle_root[1].to_s())
+
+# convert JSON
+json = JSON.parse(response)
+
+# sort json min -> max ascending order
+max_id = ->(a,b) {a["id"] <=> b["id"]}
+json.sort( & max_id )
+
+# rehash values (SHA256)
+root = Digest::SHA256.new
+for item in json
+    root.update item["sha256"]
+end
+
+# call contract method updateMerkleRoot
+contract.transact_and_wait.update_current_merkle_root(root.hexdigest(), json.last()["id"])
+
